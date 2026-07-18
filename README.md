@@ -1,120 +1,127 @@
-# React + Vite + shadcn/ui Starter Template
+# SunScale Pro
 
-A modern React starter template built with Vite, TypeScript, Tailwind CSS, and shadcn/ui components.
+AI-assisted solar engineering & project management platform — React + Vite +
+TypeScript + Tailwind CSS + shadcn/ui, backed by a real [Supabase](https://supabase.com)
+database for accounts, projects, clients, load audits, and quotations.
 
-## 🚀 Features
-
-- ⚡️ **Vite** - Fast build tool and development server
-- ⚛️ **React 18** - Latest React with hooks support
-- 🎯 **TypeScript** - Type safety and better developer experience
-- 🎨 **Tailwind CSS** - Utility-first CSS framework
-- 🧩 **shadcn/ui** - Beautifully designed components built with Radix UI
-- 📦 **Path Mapping** - Clean imports with `@/` prefix
-
-## 📦 Included shadcn/ui Components
-
-- Button
-- Card
-- Input
-- Label
-- Badge
-- Dialog
-- And more...
-
-## 🛠️ Getting Started
-
-1. **Install dependencies**
-
-   ```bash
-   npm install
-   ```
-
-2. **Start development server**
-
-   ```bash
-   npm run dev
-   ```
-
-3. **Build for production**
-
-   ```bash
-   npm run build
-   ```
-
-4. **Preview production build**
-   ```bash
-   npm run preview
-   ```
-
-## 📁 Project Structure
-
-```
-src/
-├── components/
-│   └── ui/              # shadcn/ui components
-├── lib/
-│   └── utils.ts         # Utility functions
-├── App.tsx              # Main application component
-├── index.css            # Global styles with Tailwind
-└── main.tsx             # Application entry point
-```
-
-## 🎨 Customization
-
-### Adding New shadcn/ui Components
-
-This template is pre-configured with shadcn/ui. You can add more components by creating them in the `src/components/ui/` directory.
-
-### Tailwind Configuration
-
-The Tailwind configuration is set up with shadcn/ui color variables. You can customize colors and other design tokens in:
-
-- `tailwind.config.js` - Tailwind configuration
-- `src/index.css` - CSS custom properties for themes
-
-### TypeScript Configuration
-
-Path mapping is configured for clean imports:
-
-```typescript
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-```
-
-## 🌗 Dark Mode
-
-The template includes dark mode support through Tailwind's `dark:` classes and CSS custom properties.
-
-## 📚 Learn More
-
-- [Vite Documentation](https://vitejs.dev/)
-- [React Documentation](https://react.dev/)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [shadcn/ui](https://ui.shadcn.com/)
-- [Radix UI](https://www.radix-ui.com/)
-
-## 🤝 Contributing
-
-Feel free to submit issues and enhancement requests!
-
-**⚡ Powered by [Dala](https://dala.gebeya.com)** - The AI-powered web development platform that helps you build full-stack applications faster.
+This guide assumes you're working entirely from your phone using **GitHub
+Codespaces** (a full dev environment that runs in the browser — no laptop
+needed).
 
 ---
 
-## 🤖 What is Dala?
+## 1. Push this code to GitHub
 
-**[Gebeya Dala](https://dala.gebeya.com)** is an intelligent web development platform that accelerates your React development workflow. Build, preview, and deploy web applications, and instant development environments.
+1. On your phone, go to **github.com** → **+** → **New repository**. Name it
+   (e.g. `sunscale-pro`) and create it (empty, no README).
+2. Open the **GitHub** app (or the mobile browser) → your new repo → there's
+   an **"uploading an existing file"** link on the empty repo page.
+3. Unzip this project on your phone (any file manager / zip app works), then
+   upload all the files and folders through that page. If your phone can't
+   unzip, open the zip's contents with any "extract" app first — GitHub's
+   uploader needs individual files/folders, not the zip itself.
 
-🔗 **Try Dala:** [dala.gebeya.com](https://dala.gebeya.com)
+   *(Alternative: if you have any desktop access even briefly, `git init`,
+   `git add .`, `git commit`, and `git push` is faster than the web
+   uploader.)*
 
-### Why Use Dala?
+## 2. Open it in a Codespace
 
-- **AI-Powered Development** - Get intelligent code suggestions and automated component generation
-- **Instant Preview** - See your changes live in real-time sandbox environments
-- **Zero Setup** - No local environment configuration needed
-- **Collaborative** - Build and share projects with your team
-- **Deployment Ready** - One-click deployment to production
+1. In the GitHub app/browser, open your repo.
+2. Tap **Code** → **Codespaces** tab → **Create codespace on main**.
+3. Wait ~1 minute — it opens a full VS Code + terminal in your browser. The
+   `.devcontainer` config in this repo runs `npm install` for you
+   automatically.
+
+## 3. Create your free Supabase backend
+
+1. Go to **supabase.com** → sign up (free tier is enough) → **New project**.
+2. Once it's ready, go to **SQL Editor** → **New query**.
+3. In your Codespace, open `supabase/schema.sql`, copy its entire contents,
+   paste into the Supabase SQL editor, and hit **Run**. This creates all
+   tables (`profiles`, `customers`, `projects`, `load_audits`, `quotations`)
+   with row-level security so each user only ever sees their own data.
+4. In Supabase, go to **Project Settings → API**. Copy the **Project URL**
+   and the **anon public** key.
+
+## 4. Connect the app to Supabase
+
+In the Codespace terminal:
+
+```bash
+cp .env.example .env
+```
+
+Open `.env` and paste in your two values:
+
+```
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-public-key
+```
+
+## 5. Run it
+
+```bash
+npm run dev
+```
+
+Codespaces will pop up a "port forwarded" notification — tap **Open in
+Browser**. You now have a real, working app: sign up creates a real Supabase
+account, "New Project" saves a real row in your database, clients you add in
+CRM persist, and load audits save real reports.
+
+## 6. Deploy it for real (so it has a public URL)
+
+The easiest free option:
+
+1. Push your `.env` values (not the file itself — see below) as **secrets**
+   in whichever host you pick.
+2. **Vercel** (recommended): go to vercel.com → **Add New Project** → import
+   your GitHub repo → in "Environment Variables" add
+   `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` → Deploy. Vercel detects
+   Vite automatically.
+3. You'll get a public `https://your-app.vercel.app` URL that works from any
+   phone.
+
+**Never commit your real `.env` file** — it's already in `.gitignore`. Only
+`.env.example` (with placeholder values) should go into GitHub.
 
 ---
 
-Built with ❤️ by the Dala team to help developers build faster and smarter.
+## What's real vs. simulated
+
+Wired to the real Supabase backend:
+- **Auth** — real signup/login/logout/sessions
+- **Projects** (New Project Wizard, Dashboard project list)
+- **CRM** — real client records
+- **Load Audits** — editable appliance list, saved reports
+
+Still UI-only simulations (by nature — they'd need paid third-party APIs or
+real hardware to be "real", e.g. satellite imagery providers, inverter/BMS
+telemetry hardware): Roof Analysis satellite view, System Designer drag-drop,
+live Monitoring energy flow, Maintenance/Installation timelines,
+Recommendation Engine comparisons, Financials/Quotation numbers (these
+compute from your inputs, but aren't yet linked line-by-line to saved
+projects), Collaboration chat, Reporting charts. Tell me which of these
+matter most to you and which real data source/provider you want to use
+(e.g. a specific solar-irradiance API, a specific inverter brand's API) and
+I'll wire those up next.
+
+---
+
+## Local development (non-Codespaces)
+
+```bash
+npm install
+cp .env.example .env   # then fill in your Supabase values
+npm run dev
+npm run build           # production build
+npm run typecheck       # type-check without emitting
+```
+
+---
+
+## Tech stack
+
+React 19 · Vite · TypeScript · Tailwind CSS v4 · shadcn/ui · Supabase ·
+Framer Motion · Recharts · React Hook Form + Zod

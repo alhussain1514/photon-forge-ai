@@ -1,15 +1,12 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  ChevronRight, 
-  ChevronLeft, 
-  MapPin, 
-  Home, 
-  Zap, 
-  Info, 
-  Upload, 
+import {
+  ChevronRight,
+  ChevronLeft,
+  MapPin,
+  Zap,
+  Info,
   ImageIcon,
-  Check,
   Compass,
   FileText,
   Bot
@@ -22,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { GlassCard } from '@/components/GlassCard';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { createProject } from '@/lib/api';
 
 const steps = [
   { id: 'client', title: 'Client Details', icon: Info },
@@ -35,11 +33,47 @@ interface ProjectWizardProps {
   onCancel: () => void;
 }
 
+interface FormState {
+  clientName: string;
+  clientEmail: string;
+  clientPhone: string;
+  buildingType: string;
+  address: string;
+  latitude: string;
+  longitude: string;
+  roofType: string;
+  gridType: string;
+  backupHours: string;
+  notes: string;
+}
+
+const initialForm: FormState = {
+  clientName: '',
+  clientEmail: '',
+  clientPhone: '',
+  buildingType: 'residential',
+  address: '',
+  latitude: '',
+  longitude: '',
+  roofType: '',
+  gridType: 'on-grid',
+  backupHours: '',
+  notes: '',
+};
+
 const ProjectWizard = ({ onComplete, onCancel }: ProjectWizardProps) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [form, setForm] = useState<FormState>(initialForm);
+
+  const update = (field: keyof FormState, value: string) =>
+    setForm((f) => ({ ...f, [field]: value }));
 
   const next = () => {
+    if (currentStep === 0 && !form.clientName.trim()) {
+      toast.error('Client name is required');
+      return;
+    }
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
@@ -55,13 +89,29 @@ const ProjectWizard = ({ onComplete, onCancel }: ProjectWizardProps) => {
     }
   };
 
-  const submit = () => {
+  const submit = async () => {
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      toast.success("Project Created Successfully");
+    try {
+      await createProject({
+        client_name: form.clientName,
+        client_email: form.clientEmail || undefined,
+        client_phone: form.clientPhone || undefined,
+        building_type: form.buildingType,
+        address: form.address || undefined,
+        latitude: form.latitude ? Number(form.latitude) : undefined,
+        longitude: form.longitude ? Number(form.longitude) : undefined,
+        roof_type: form.roofType || undefined,
+        grid_type: form.gridType,
+        backup_hours: form.backupHours ? Number(form.backupHours) : undefined,
+        notes: form.notes || undefined,
+      });
+      toast.success('Project Created Successfully');
       onComplete();
-    }, 2000);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not create project');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const renderStep = () => {
@@ -71,19 +121,35 @@ const ProjectWizard = ({ onComplete, onCancel }: ProjectWizardProps) => {
           <div className="space-y-6">
             <div className="space-y-2">
               <Label>Client Name</Label>
-              <Input placeholder="Full name or company" className="bg-white/5 border-white/10" />
+              <Input
+                placeholder="Full name or company"
+                className="bg-white/5 border-white/10"
+                value={form.clientName}
+                onChange={(e) => update('clientName', e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label>Email Address</Label>
-              <Input placeholder="client@example.com" className="bg-white/5 border-white/10" />
+              <Input
+                placeholder="client@example.com"
+                className="bg-white/5 border-white/10"
+                type="email"
+                value={form.clientEmail}
+                onChange={(e) => update('clientEmail', e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label>Phone Number</Label>
-              <Input placeholder="+1 (555) 000-0000" className="bg-white/5 border-white/10" />
+              <Input
+                placeholder="+1 (555) 000-0000"
+                className="bg-white/5 border-white/10"
+                value={form.clientPhone}
+                onChange={(e) => update('clientPhone', e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label>Building Category</Label>
-              <Select>
+              <Select value={form.buildingType} onValueChange={(v) => update('buildingType', v)}>
                 <SelectTrigger className="bg-white/5 border-white/10">
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
@@ -101,7 +167,12 @@ const ProjectWizard = ({ onComplete, onCancel }: ProjectWizardProps) => {
           <div className="space-y-6">
             <div className="space-y-2">
               <Label>Property Address</Label>
-              <Input placeholder="Street address, City, State" className="bg-white/5 border-white/10" />
+              <Input
+                placeholder="Street address, City, State"
+                className="bg-white/5 border-white/10"
+                value={form.address}
+                onChange={(e) => update('address', e.target.value)}
+              />
             </div>
             <div className="h-48 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden relative group">
               <img src="https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&q=80&w=1000" alt="Map" className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-110 transition-transform duration-1000" />
@@ -113,11 +184,21 @@ const ProjectWizard = ({ onComplete, onCancel }: ProjectWizardProps) => {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Latitude</Label>
-                <Input placeholder="40.7128" className="bg-white/5 border-white/10" />
+                <Input
+                  placeholder="40.7128"
+                  className="bg-white/5 border-white/10"
+                  value={form.latitude}
+                  onChange={(e) => update('latitude', e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Longitude</Label>
-                <Input placeholder="-74.0060" className="bg-white/5 border-white/10" />
+                <Input
+                  placeholder="-74.0060"
+                  className="bg-white/5 border-white/10"
+                  value={form.longitude}
+                  onChange={(e) => update('longitude', e.target.value)}
+                />
               </div>
             </div>
           </div>
@@ -128,7 +209,7 @@ const ProjectWizard = ({ onComplete, onCancel }: ProjectWizardProps) => {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Roof Type</Label>
-                <Select>
+                <Select value={form.roofType} onValueChange={(v) => update('roofType', v)}>
                   <SelectTrigger className="bg-white/5 border-white/10">
                     <SelectValue placeholder="Select" />
                   </SelectTrigger>
@@ -141,7 +222,7 @@ const ProjectWizard = ({ onComplete, onCancel }: ProjectWizardProps) => {
               </div>
               <div className="space-y-2">
                 <Label>Grid Type</Label>
-                <Select>
+                <Select value={form.gridType} onValueChange={(v) => update('gridType', v)}>
                   <SelectTrigger className="bg-white/5 border-white/10">
                     <SelectValue placeholder="Select" />
                   </SelectTrigger>
@@ -155,11 +236,22 @@ const ProjectWizard = ({ onComplete, onCancel }: ProjectWizardProps) => {
             </div>
             <div className="space-y-2">
               <Label>Desired Backup Hours</Label>
-              <Input type="number" placeholder="e.g. 12" className="bg-white/5 border-white/10" />
+              <Input
+                type="number"
+                placeholder="e.g. 12"
+                className="bg-white/5 border-white/10"
+                value={form.backupHours}
+                onChange={(e) => update('backupHours', e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label>Project Notes</Label>
-              <Textarea placeholder="Any specific requirements or constraints..." className="bg-white/5 border-white/10 min-h-[120px]" />
+              <Textarea
+                placeholder="Any specific requirements or constraints..."
+                className="bg-white/5 border-white/10 min-h-[120px]"
+                value={form.notes}
+                onChange={(e) => update('notes', e.target.value)}
+              />
             </div>
           </div>
         );
@@ -173,7 +265,12 @@ const ProjectWizard = ({ onComplete, onCancel }: ProjectWizardProps) => {
                  { label: 'Site Images', icon: ImageIcon },
                  { label: 'Utility Bill', icon: Zap },
                ].map((item, i) => (
-                 <button key={i} className="h-32 rounded-2xl border border-dashed border-white/20 hover:border-primary/50 hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-2 group">
+                 <button
+                   key={i}
+                   type="button"
+                   onClick={() => toast.info('File upload requires storage setup — see README for adding Supabase Storage.')}
+                   className="h-32 rounded-2xl border border-dashed border-white/20 hover:border-primary/50 hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-2 group"
+                 >
                    <div className="p-3 rounded-full bg-white/5 group-hover:bg-primary/20 transition-colors">
                      <item.icon className="w-6 h-6 text-muted-foreground group-hover:text-primary" />
                    </div>
@@ -181,7 +278,7 @@ const ProjectWizard = ({ onComplete, onCancel }: ProjectWizardProps) => {
                  </button>
                ))}
              </div>
-             
+
              <GlassCard className="p-6 border-primary/20 bg-primary/5 flex items-center gap-4">
                 <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center">
                   <Bot className="w-7 h-7 text-black" />
@@ -206,12 +303,12 @@ const ProjectWizard = ({ onComplete, onCancel }: ProjectWizardProps) => {
         </div>
         <div className="flex gap-1">
           {steps.map((_, i) => (
-            <div 
-              key={i} 
+            <div
+              key={i}
               className={cn(
                 "w-8 h-1 rounded-full transition-all duration-300",
                 i <= currentStep ? "bg-primary" : "bg-white/10"
-              )} 
+              )}
             />
           ))}
         </div>

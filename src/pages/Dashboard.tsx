@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   CloudSun, 
@@ -24,6 +24,8 @@ import { GlassCard } from '@/components/GlassCard';
 import { Button } from '@/components/ui/button';
 import { View } from '@/App';
 import { cn } from '@/lib/utils';
+import { listProjects } from '@/lib/api';
+import type { Project } from '@/lib/types';
 import { 
   AreaChart, 
   Area, 
@@ -60,6 +62,16 @@ interface DashboardProps {
 }
 
 const Dashboard = ({ setView }: DashboardProps) => {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loadingProjects, setLoadingProjects] = useState(true);
+
+  useEffect(() => {
+    listProjects()
+      .then(setProjects)
+      .catch(() => setProjects([]))
+      .finally(() => setLoadingProjects(false));
+  }, []);
+
   return (
     <div className="space-y-8">
       {/* Greeting & Weather */}
@@ -142,7 +154,7 @@ const Dashboard = ({ setView }: DashboardProps) => {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h3 className="font-bold">Energy Performance</h3>
-            <p className="text-xs text-muted-foreground">Production vs Consumption</p>
+            <p className="text-xs text-muted-foreground">Production vs Consumption (simulated — connect an inverter API for live data)</p>
           </div>
           <div className="flex gap-2">
             <div className="flex items-center gap-1">
@@ -230,36 +242,44 @@ const Dashboard = ({ setView }: DashboardProps) => {
         </GlassCard>
       </div>
 
-      {/* Upcoming Installations */}
+      {/* Your Projects (real data) */}
       <section className="pb-8">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-lg">Upcoming Installations</h3>
-          <Button variant="link" className="text-primary text-xs">View All</Button>
+          <h3 className="font-bold text-lg">Your Projects</h3>
+          <Button variant="link" className="text-primary text-xs" onClick={() => setView('crm')}>View All</Button>
         </div>
         <div className="space-y-4">
-          {[
-            { client: "Dr. Elizabeth Stone", project: "Solar-H Hybrid System", date: "Tomorrow, 09:00", status: "Ready", progress: 0 },
-            { client: "Global Tech Hub", project: "Industrial Array 250kW", date: "Friday, 08:30", status: "Materials", progress: 65 },
-          ].map((item, i) => (
-            <GlassCard key={i} className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
-                   <Briefcase className="w-6 h-6 text-muted-foreground" />
-                </div>
-                <div>
-                  <div className="font-bold text-sm">{item.client}</div>
-                  <div className="text-xs text-muted-foreground">{item.project}</div>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-xs font-bold text-primary flex items-center gap-1 justify-end">
-                   <Clock className="w-3 h-3" />
-                   {item.date}
-                </div>
-                <div className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground mt-1">{item.status}</div>
-              </div>
+          {loadingProjects ? (
+            <div className="text-center text-muted-foreground text-sm py-8">Loading projects...</div>
+          ) : projects.length === 0 ? (
+            <GlassCard className="p-6 text-center space-y-3">
+              <p className="text-sm text-muted-foreground">No projects yet.</p>
+              <Button size="sm" className="bg-primary text-black font-bold" onClick={() => setView('project-wizard')}>
+                Start your first design
+              </Button>
             </GlassCard>
-          ))}
+          ) : (
+            projects.slice(0, 5).map((item) => (
+              <GlassCard key={item.id} className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
+                     <Briefcase className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-sm">{item.client_name}</div>
+                    <div className="text-xs text-muted-foreground">{item.address || item.building_type}</div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs font-bold text-primary flex items-center gap-1 justify-end">
+                     <Clock className="w-3 h-3" />
+                     {new Date(item.created_at).toLocaleDateString()}
+                  </div>
+                  <div className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground mt-1">{item.status}</div>
+                </div>
+              </GlassCard>
+            ))
+          )}
         </div>
       </section>
     </div>

@@ -20,15 +20,18 @@ import Collaboration from './pages/Collaboration';
 import Reporting from './pages/Reporting';
 import Settings from './pages/Settings';
 import AppShell from './components/layout/AppShell';
+import SetupRequired from './components/SetupRequired';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { isSupabaseConfigured } from './lib/supabase';
 
-export type View = 
-  | 'splash' 
-  | 'onboarding' 
-  | 'auth' 
-  | 'dashboard' 
-  | 'project-wizard' 
-  | 'load-audit' 
-  | 'roof-analysis' 
+export type View =
+  | 'splash'
+  | 'onboarding'
+  | 'auth'
+  | 'dashboard'
+  | 'project-wizard'
+  | 'load-audit'
+  | 'roof-analysis'
   | 'system-designer'
   | 'recommendations'
   | 'financials'
@@ -41,22 +44,52 @@ export type View =
   | 'reporting'
   | 'settings';
 
-function App() {
-  const [view, setView] = useState<View>('splash');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+const ONBOARDING_KEY = 'sunscale_onboarding_complete';
 
+function AppShellRouter() {
+  const { session, loading, signOut } = useAuth();
+  const [view, setView] = useState<View>('splash');
+
+  // Splash screen, then decide where to land based on real auth state.
   useEffect(() => {
-    if (view === 'splash') {
-      const timer = setTimeout(() => setView('onboarding'), 3000);
-      return () => clearTimeout(timer);
+    if (view !== 'splash') return;
+    const timer = setTimeout(() => {
+      if (loading) return;
+      const seenOnboarding = localStorage.getItem(ONBOARDING_KEY) === 'true';
+      if (session) setView('dashboard');
+      else if (seenOnboarding) setView('auth');
+      else setView('onboarding');
+    }, 2200);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, loading, session]);
+
+  // If the session changes while already past splash (e.g. user logs out from
+  // Settings), route back to auth.
+  useEffect(() => {
+    if (view === 'splash') return;
+    if (!loading && !session && view !== 'onboarding' && view !== 'auth') {
+      setView('auth');
     }
-  }, [view]);
+  }, [session, loading, view]);
+
+  const goToDashboard = () => setView('dashboard');
 
   const renderView = () => {
     switch (view) {
-      case 'splash': return <SplashScreen />;
-      case 'onboarding': return <Onboarding onComplete={() => setView('auth')} />;
-      case 'auth': return <Auth onLogin={() => { setIsLoggedIn(true); setView('dashboard'); }} />;
+      case 'splash':
+        return <SplashScreen />;
+      case 'onboarding':
+        return (
+          <Onboarding
+            onComplete={() => {
+              localStorage.setItem(ONBOARDING_KEY, 'true');
+              setView('auth');
+            }}
+          />
+        );
+      case 'auth':
+        return <Auth onLogin={goToDashboard} />;
       default:
         return (
           <AppShell currentView={view} setView={setView}>
@@ -83,7 +116,7 @@ function App() {
                 {view === 'crm' && <CRM onBack={() => setView('dashboard')} />}
                 {view === 'collaboration' && <Collaboration onBack={() => setView('dashboard')} />}
                 {view === 'reporting' && <Reporting onBack={() => setView('dashboard')} />}
-                {view === 'settings' && <Settings onBack={() => setView('dashboard')} />}
+                {view === 'settings' && <Settings onBack={() => setView('dashboard')} onSignOut={async () => { await signOut(); setView('auth'); }} />}
               </motion.div>
             </AnimatePresence>
           </AppShell>
@@ -91,9 +124,19 @@ function App() {
     }
   };
 
+  return <>{renderView()}</>;
+}
+
+function App() {
   return (
     <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/30 overflow-x-hidden">
-      {renderView()}
+      {isSupabaseConfigured ? (
+        <AuthProvider>
+          <AppShellRouter />
+        </AuthProvider>
+      ) : (
+        <SetupRequired />
+      )}
       <Toaster position="top-center" richColors />
     </div>
   );
