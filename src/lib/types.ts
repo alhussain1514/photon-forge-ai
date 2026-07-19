@@ -34,143 +34,50 @@ export interface Project {
   backup_hours: number | null;
   notes: string | null;
   status: string;
-  system_size_kwp: number |
-cat > src/lib/api.ts << 'FILEEOF'
-import { supabase } from './supabase';
-import type { Customer, Project, LoadAudit, Quotation, Appliance, QuoteLineItem } from './types';
-
-export async function listCustomers(): Promise<Customer[]> {
-  const { data, error } = await supabase
-    .from('customers')
-    .select('*')
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return data as Customer[];
+  system_size_kwp: number | null;
+  photo_urls: string[] | null;
+  created_at: string;
+  updated_at: string;
 }
 
-export async function createCustomer(input: {
+export interface Appliance {
+  id: string;
   name: string;
-  type: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-}): Promise<Customer> {
-  const { data: userData } = await supabase.auth.getUser();
-  const owner_id = userData.user?.id;
-  if (!owner_id) throw new Error('Not signed in');
-
-  const { data, error } = await supabase
-    .from('customers')
-    .insert({ ...input, owner_id })
-    .select()
-    .single();
-  if (error) throw error;
-  return data as Customer;
+  category: string;
+  watts: number;
+  hours: number;
+  qty: number;
+  critical: boolean;
 }
 
-export async function listProjects(): Promise<Project[]> {
-  const { data, error } = await supabase
-    .from('projects')
-    .select('*')
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return data as Project[];
-}
-
-export interface NewProjectInput {
-  client_name: string;
-  client_email?: string;
-  client_phone?: string;
-  building_type: string;
-  address?: string;
-  latitude?: number;
-  longitude?: number;
-  roof_type?: string;
-  grid_type: string;
-  backup_hours?: number;
-  notes?: string;
-}
-
-export async function createProject(input: NewProjectInput): Promise<Project> {
-  const { data: userData } = await supabase.auth.getUser();
-  const owner_id = userData.user?.id;
-  if (!owner_id) throw new Error('Not signed in');
-
-  const { data, error } = await supabase
-    .from('projects')
-    .insert({ ...input, owner_id })
-    .select()
-    .single();
-  if (error) throw error;
-  return data as Project;
-}
-
-export async function updateProjectStatus(id: string, status: string): Promise<void> {
-  const { error } = await supabase
-    .from('projects')
-    .update({ status, updated_at: new Date().toISOString() })
-    .eq('id', id);
-  if (error) throw error;
-}
-
-export async function saveLoadAudit(input: {
-  project_id?: string | null;
+export interface LoadAudit {
+  id: string;
+  owner_id: string;
+  project_id: string | null;
   appliances: Appliance[];
   peak_load_kw: number;
   daily_consumption_kwh: number;
   recommended_kwp: number;
-  system_size_kw?: number;
-  battery_kwh?: number;
-  estimated_cost_ngn?: number;
-  monthly_savings_ngn?: number;
-  roi_months?: number;
-}): Promise<LoadAudit> {
-  const { data: userData } = await supabase.auth.getUser();
-  const owner_id = userData.user?.id;
-  if (!owner_id) throw new Error('Not signed in');
-
-  const { data, error } = await supabase
-    .from('load_audits')
-    .insert({ ...input, owner_id })
-    .select()
-    .single();
-  if (error) throw error;
-  return data as unknown as LoadAudit;
+  system_size_kw?: number | null;
+  battery_kwh?: number | null;
+  estimated_cost_ngn?: number | null;
+  monthly_savings_ngn?: number | null;
+  roi_months?: number | null;
+  created_at: string;
 }
 
-export async function listLoadAudits(): Promise<LoadAudit[]> {
-  const { data, error } = await supabase
-    .from('load_audits')
-    .select('*')
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return data as unknown as LoadAudit[];
+export interface QuoteLineItem {
+  item: string;
+  price: number;
 }
 
-export async function saveQuotation(input: {
-  project_id?: string | null;
+export interface Quotation {
+  id: string;
+  owner_id: string;
+  project_id: string | null;
   line_items: QuoteLineItem[];
   total: number;
-  valid_until?: string;
-}): Promise<Quotation> {
-  const { data: userData } = await supabase.auth.getUser();
-  const owner_id = userData.user?.id;
-  if (!owner_id) throw new Error('Not signed in');
-
-  const { data, error } = await supabase
-    .from('quotations')
-    .insert({ ...input, owner_id })
-    .select()
-    .single();
-  if (error) throw error;
-  return data as unknown as Quotation;
-}
-
-export async function listQuotations(): Promise<Quotation[]> {
-  const { data, error } = await supabase
-    .from('quotations')
-    .select('*')
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return data as unknown as Quotation[];
+  status: string;
+  valid_until: string | null;
+  created_at: string;
 }

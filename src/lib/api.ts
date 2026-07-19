@@ -1,9 +1,6 @@
 import { supabase } from './supabase';
 import type { Customer, Project, LoadAudit, Quotation, Appliance, QuoteLineItem } from './types';
 
-// ---------------------------------------------------------------------------
-// Customers
-// ---------------------------------------------------------------------------
 export async function listCustomers(): Promise<Customer[]> {
   const { data, error } = await supabase
     .from('customers')
@@ -33,9 +30,6 @@ export async function createCustomer(input: {
   return data as Customer;
 }
 
-// ---------------------------------------------------------------------------
-// Projects
-// ---------------------------------------------------------------------------
 export async function listProjects(): Promise<Project[]> {
   const { data, error } = await supabase
     .from('projects')
@@ -57,6 +51,7 @@ export interface NewProjectInput {
   grid_type: string;
   backup_hours?: number;
   notes?: string;
+  photo_urls?: string[];
 }
 
 export async function createProject(input: NewProjectInput): Promise<Project> {
@@ -81,15 +76,17 @@ export async function updateProjectStatus(id: string, status: string): Promise<v
   if (error) throw error;
 }
 
-// ---------------------------------------------------------------------------
-// Load Audits
-// ---------------------------------------------------------------------------
 export async function saveLoadAudit(input: {
   project_id?: string | null;
   appliances: Appliance[];
   peak_load_kw: number;
   daily_consumption_kwh: number;
   recommended_kwp: number;
+  system_size_kw?: number;
+  battery_kwh?: number;
+  estimated_cost_ngn?: number;
+  monthly_savings_ngn?: number;
+  roi_months?: number;
 }): Promise<LoadAudit> {
   const { data: userData } = await supabase.auth.getUser();
   const owner_id = userData.user?.id;
@@ -113,9 +110,6 @@ export async function listLoadAudits(): Promise<LoadAudit[]> {
   return data as unknown as LoadAudit[];
 }
 
-// ---------------------------------------------------------------------------
-// Quotations
-// ---------------------------------------------------------------------------
 export async function saveQuotation(input: {
   project_id?: string | null;
   line_items: QuoteLineItem[];
