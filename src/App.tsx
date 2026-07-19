@@ -7,6 +7,7 @@ import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
 import ProjectWizard from './pages/ProjectWizard';
 import LoadAudit from './pages/LoadAudit';
+import SolarConsultant from './pages/SolarConsultant';
 import RoofAnalysis from './pages/RoofAnalysis';
 import SystemDesigner from './pages/SystemDesigner';
 import RecommendationEngine from './pages/RecommendationEngine';
@@ -31,6 +32,7 @@ export type View =
   | 'dashboard'
   | 'project-wizard'
   | 'load-audit'
+  | 'solar-consultant'
   | 'roof-analysis'
   | 'system-designer'
   | 'recommendations'
@@ -50,7 +52,6 @@ function AppShellRouter() {
   const { session, loading, signOut } = useAuth();
   const [view, setView] = useState<View>('splash');
 
-  // Splash screen, then decide where to land based on real auth state.
   useEffect(() => {
     if (view !== 'splash') return;
     const timer = setTimeout(() => {
@@ -64,8 +65,6 @@ function AppShellRouter() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, loading, session]);
 
-  // If the session changes while already past splash (e.g. user logs out from
-  // Settings), route back to auth.
   useEffect(() => {
     if (view === 'splash') return;
     if (!loading && !session && view !== 'onboarding' && view !== 'auth') {
@@ -105,6 +104,7 @@ function AppShellRouter() {
                 {view === 'dashboard' && <Dashboard setView={setView} />}
                 {view === 'project-wizard' && <ProjectWizard onComplete={() => setView('dashboard')} onCancel={() => setView('dashboard')} />}
                 {view === 'load-audit' && <LoadAudit onBack={() => setView('dashboard')} />}
+                {view === 'solar-consultant' && <SolarConsultant onBack={() => setView('dashboard')} />}
                 {view === 'roof-analysis' && <RoofAnalysis onBack={() => setView('dashboard')} />}
                 {view === 'system-designer' && <SystemDesigner onBack={() => setView('dashboard')} />}
                 {view === 'recommendations' && <RecommendationEngine onBack={() => setView('dashboard')} />}

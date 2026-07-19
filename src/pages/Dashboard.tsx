@@ -1,24 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  CloudSun, 
-  Zap, 
-  Battery, 
-  Leaf, 
-  PlusCircle, 
-  Compass, 
-  FileText, 
-  FolderKanban, 
-  Calculator, 
+import {
+  CloudSun,
+  Zap,
+  Battery,
+  Leaf,
+  Calculator,
+  FileText,
+  FolderKanban,
   Bot,
   TrendingUp,
   ArrowUpRight,
-  MoreVertical, 
   Calendar,
-  CheckCircle2,
   Clock,
   FilePlus,
-  Briefcase
+  Briefcase,
+  Trophy,
+  MapPin
 } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { Button } from '@/components/ui/button';
@@ -26,13 +24,15 @@ import { View } from '@/App';
 import { cn } from '@/lib/utils';
 import { listProjects } from '@/lib/api';
 import type { Project } from '@/lib/types';
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import { useAuth } from '@/context/AuthContext';
+import { worldSolarProjects, worldRecordCapacityMw } from '@/data/worldSolarProjects';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   BarChart,
   Bar,
@@ -62,6 +62,7 @@ interface DashboardProps {
 }
 
 const Dashboard = ({ setView }: DashboardProps) => {
+  const { user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
 
@@ -72,13 +73,16 @@ const Dashboard = ({ setView }: DashboardProps) => {
       .finally(() => setLoadingProjects(false));
   }, []);
 
+  const firstName = ((user?.user_metadata?.full_name as string) || '').split(' ')[0] || 'Engineer';
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good Morning' : hour < 18 ? 'Good Afternoon' : 'Good Evening';
+
   return (
     <div className="space-y-8">
-      {/* Greeting & Weather */}
       <div className="flex items-end justify-between">
         <div>
           <h2 className="text-muted-foreground font-medium uppercase tracking-widest text-xs">Welcome back</h2>
-          <h1 className="text-3xl font-bold">Good Morning, Engineer.</h1>
+          <h1 className="text-3xl font-bold">{greeting}, {firstName}.</h1>
         </div>
         <GlassCard className="px-4 py-2 flex items-center gap-3 border-white/5 bg-white/5">
           <CloudSun className="w-6 h-6 text-solar-gold" />
@@ -89,7 +93,6 @@ const Dashboard = ({ setView }: DashboardProps) => {
         </GlassCard>
       </div>
 
-      {/* Hero Stats */}
       <div className="grid grid-cols-2 gap-4">
         <GlassCard className="p-5 flex flex-col justify-between h-40 group hover:border-primary/50 transition-colors cursor-pointer">
           <div className="flex items-center justify-between">
@@ -118,19 +121,19 @@ const Dashboard = ({ setView }: DashboardProps) => {
         </GlassCard>
       </div>
 
-      {/* Quick Actions */}
       <section>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-lg">Quick Actions</h3>
         </div>
         <div className="grid grid-cols-3 gap-4">
           {[
-            { id: 'project-wizard', icon: FilePlus, label: 'New Design', color: 'bg-blue-500' },
-            { id: 'load-audit', icon: Zap, label: 'AI Audit', color: 'bg-emerald-500' },
-            { id: 'quotation', icon: FileText, label: 'Generate Quote', color: 'bg-solar-gold' },
-            { id: 'crm', icon: FolderKanban, label: 'Projects', color: 'bg-purple-500' },
-            { id: 'financials', icon: Calculator, label: 'Calculator', color: 'bg-pink-500' },
-            { id: 'collaboration', icon: Bot, label: 'AI Assistant', color: 'bg-indigo-500' },
+            { id: 'project-wizard', icon: FilePlus, label: 'New Design' },
+            { id: 'solar-consultant', icon: Calculator, label: 'Solar Consultant' },
+            { id: 'load-audit', icon: Zap, label: 'AI Audit' },
+            { id: 'quotation', icon: FileText, label: 'Generate Quote' },
+            { id: 'crm', icon: FolderKanban, label: 'Projects' },
+            { id: 'financials', icon: TrendingUp, label: 'Financials' },
+            { id: 'collaboration', icon: Bot, label: 'AI Assistant' },
           ].map((action) => (
             <button
               key={action.id}
@@ -149,7 +152,6 @@ const Dashboard = ({ setView }: DashboardProps) => {
         </div>
       </section>
 
-      {/* Energy Chart */}
       <GlassCard className="p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -179,7 +181,7 @@ const Dashboard = ({ setView }: DashboardProps) => {
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
               <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{fill: '#94A3B8', fontSize: 10}} />
               <YAxis axisLine={false} tickLine={false} tick={{fill: '#94A3B8', fontSize: 10}} />
-              <Tooltip 
+              <Tooltip
                 contentStyle={{ backgroundColor: '#1A1F26', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
                 itemStyle={{ color: '#F8F9FA' }}
               />
@@ -190,7 +192,6 @@ const Dashboard = ({ setView }: DashboardProps) => {
         </div>
       </GlassCard>
 
-      {/* Statistics & Revenue */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <GlassCard className="p-6">
           <div className="flex items-center justify-between mb-4">
@@ -214,7 +215,7 @@ const Dashboard = ({ setView }: DashboardProps) => {
             <div className="text-primary font-bold">84%</div>
           </div>
           <div className="w-full h-1.5 bg-white/10 rounded-full mt-2 overflow-hidden">
-            <motion.div 
+            <motion.div
               initial={{ width: 0 }}
               animate={{ width: '84%' }}
               className="h-full bg-primary"
@@ -222,7 +223,6 @@ const Dashboard = ({ setView }: DashboardProps) => {
           </div>
         </GlassCard>
 
-        {/* Environmental Impact */}
         <GlassCard className="p-6 bg-gradient-to-br from-emerald-500/10 to-transparent border-emerald-500/20">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center">
@@ -242,7 +242,62 @@ const Dashboard = ({ setView }: DashboardProps) => {
         </GlassCard>
       </div>
 
-      {/* Your Projects (real data) */}
+      <section>
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-2">
+            <Trophy className="w-5 h-5 text-solar-gold" />
+            <h3 className="font-bold text-lg">World's Largest Solar Installations</h3>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground mb-4">Real, publicly documented mega-projects — for scale and inspiration.</p>
+        <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 snap-x snap-mandatory scrollbar-none">
+          {worldSolarProjects
+            .slice()
+            .sort((a, b) => b.capacityMw - a.capacityMw)
+            .map((proj) => {
+              const pct = Math.round((proj.capacityMw / worldRecordCapacityMw) * 100);
+              return (
+                <GlassCard
+                  key={proj.id}
+                  className="p-5 min-w-[260px] snap-start border-white/10 relative overflow-hidden shrink-0"
+                >
+                  <div
+                    className="absolute -top-10 -right-10 w-32 h-32 rounded-full blur-3xl opacity-20"
+                    style={{ backgroundColor: proj.accent }}
+                  />
+                  <div className="relative z-10 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-2xl leading-none">{proj.countryFlag}</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{proj.commissioned}</span>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm leading-tight">{proj.name}</h4>
+                      <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
+                        <MapPin className="w-3 h-3" /> {proj.country}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-black" style={{ color: proj.accent }}>
+                        {proj.capacityMw.toLocaleString()} <span className="text-xs font-bold">MW</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-white/10 rounded-full mt-2 overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${pct}%` }}
+                          transition={{ duration: 1 }}
+                          className="h-full rounded-full"
+                          style={{ backgroundColor: proj.accent }}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">{proj.fact}</p>
+                  </div>
+                </GlassCard>
+              );
+            })}
+        </div>
+      </section>
+
       <section className="pb-8">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-lg">Your Projects</h3>
@@ -253,7 +308,7 @@ const Dashboard = ({ setView }: DashboardProps) => {
             <div className="text-center text-muted-foreground text-sm py-8">Loading projects...</div>
           ) : projects.length === 0 ? (
             <GlassCard className="p-6 text-center space-y-3">
-              <p className="text-sm text-muted-foreground">No projects yet.</p>
+              <p className="text-sm text-muted-foreground">No projects yet — every one of the giants above started as a single design too.</p>
               <Button size="sm" className="bg-primary text-black font-bold" onClick={() => setView('project-wizard')}>
                 Start your first design
               </Button>
