@@ -3,8 +3,6 @@ import {
   ArrowLeft,
   Plus,
   Trash2,
-  Zap,
-  Battery,
   Banknote,
   TrendingUp,
   Settings2,
@@ -12,11 +10,13 @@ import {
   ChevronUp,
   Fuel,
   PlugZap,
+  Globe,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { GlassCard } from '@/components/GlassCard';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { saveLoadAudit } from '@/lib/api';
 
@@ -36,29 +36,105 @@ const presetAppliances: Omit<ApplianceRow, 'id'>[] = [
 ];
 
 const SYSTEM_TIERS_KW = [1, 2, 3, 5, 10];
-const PEAK_SUN_HOURS = 4.5;
 const INVERTER_LOSS_FACTOR = 1.3;
 
 interface MarketRates {
+  countryId: string;
+  countryLabel: string;
+  currencySymbol: string;
+  peakSunHours: number;
   panelInverterPerKw: number;
   batteryPerKwh: number;
   installMarkupPct: number;
-  petrolPerLitre: number;
+  fuelPerLitre: number;
   genFuelLPerKwh: number;
-  phcnPerKwh: number;
+  gridTariffPerKwh: number;
+  gridLabel: string;
 }
 
-const defaultRates: MarketRates = {
-  panelInverterPerKw: 300000,
-  batteryPerKwh: 220000,
-  installMarkupPct: 10,
-  petrolPerLitre: 1300,
-  genFuelLPerKwh: 0.5,
-  phcnPerKwh: 209.5,
-};
+const countryPresets: MarketRates[] = [
+  {
+    countryId: 'ng',
+    countryLabel: '🇳🇬 Nigeria',
+    currencySymbol: '₦',
+    peakSunHours: 4.5,
+    panelInverterPerKw: 300000,
+    batteryPerKwh: 220000,
+    installMarkupPct: 10,
+    fuelPerLitre: 1300,
+    genFuelLPerKwh: 0.5,
+    gridTariffPerKwh: 209.5,
+    gridLabel: 'PHCN (Band A)',
+  },
+  {
+    countryId: 'gh',
+    countryLabel: '🇬🇭 Ghana',
+    currencySymbol: 'GH₵',
+    peakSunHours: 5,
+    panelInverterPerKw: 12000,
+    batteryPerKwh: 2500,
+    installMarkupPct: 10,
+    fuelPerLitre: 15.5,
+    genFuelLPerKwh: 0.5,
+    gridTariffPerKwh: 1.3,
+    gridLabel: 'ECG Grid',
+  },
+  {
+    countryId: 'ke',
+    countryLabel: '🇰🇪 Kenya',
+    currencySymbol: 'KSh',
+    peakSunHours: 5.2,
+    panelInverterPerKw: 100000,
+    batteryPerKwh: 150000,
+    installMarkupPct: 10,
+    fuelPerLitre: 180,
+    genFuelLPerKwh: 0.5,
+    gridTariffPerKwh: 25,
+    gridLabel: 'KPLC Grid',
+  },
+  {
+    countryId: 'za',
+    countryLabel: '🇿🇦 South Africa',
+    currencySymbol: 'R',
+    peakSunHours: 5.3,
+    panelInverterPerKw: 15000,
+    batteryPerKwh: 3500,
+    installMarkupPct: 10,
+    fuelPerLitre: 23,
+    genFuelLPerKwh: 0.5,
+    gridTariffPerKwh: 3.1,
+    gridLabel: 'Eskom Grid',
+  },
+  {
+    countryId: 'in',
+    countryLabel: '🇮🇳 India',
+    currencySymbol: '₹',
+    peakSunHours: 5,
+    panelInverterPerKw: 55000,
+    batteryPerKwh: 15000,
+    installMarkupPct: 10,
+    fuelPerLitre: 90,
+    genFuelLPerKwh: 0.4,
+    gridTariffPerKwh: 7,
+    gridLabel: 'DISCOM Grid',
+  },
+  {
+    countryId: 'intl',
+    countryLabel: '🌍 International (USD)',
+    currencySymbol: '$',
+    peakSunHours: 4.5,
+    panelInverterPerKw: 2000,
+    batteryPerKwh: 400,
+    installMarkupPct: 10,
+    fuelPerLitre: 1.2,
+    genFuelLPerKwh: 0.5,
+    gridTariffPerKwh: 0.15,
+    gridLabel: 'Grid Utility',
+  },
+];
 
-const naira = (n: number) =>
-  `₦${Math.round(n).toLocaleString('en-NG')}`;
+const formatMoney = (n: number, symbol: string) =>
+  `${symbol}${Math.round(n).toLocaleString('en-US')}`;
 
 let nextId = 100;
 
@@ -66,7 +142,7 @@ const SolarConsultant = ({ onBack }: { onBack: () => void }) => {
   const [appliances, setAppliances] = useState<ApplianceRow[]>(
     presetAppliances.map((a, i) => ({ ...a, id: String(i + 1) }))
   );
-  const [rates, setRates] = useState<MarketRates>(defaultRates);
+  const [rates, setRates] = useState<MarketRates>(countryPresets[0]);
   const [showRates, setShowRates] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -84,6 +160,11 @@ const SolarConsultant = ({ onBack }: { onBack: () => void }) => {
     ]);
   };
 
+  const selectCountry = (countryId: string) => {
+    const preset = countryPresets.find((c) => c.countryId === countryId);
+    if (preset) setRates(preset);
+  };
+
   const results = useMemo(() => {
     const rawWhPerDay = appliances.reduce((sum, a) => sum + a.watts * a.qty * a.hours, 0);
     const peakLoadW = appliances.reduce((sum, a) => sum + a.watts * a.qty, 0);
@@ -91,7 +172,7 @@ const SolarConsultant = ({ onBack }: { onBack: () => void }) => {
     const adjustedWhPerDay = rawWhPerDay * INVERTER_LOSS_FACTOR;
     const adjustedKwhPerDay = adjustedWhPerDay / 1000;
 
-    const requiredKwFromEnergy = adjustedKwhPerDay / PEAK_SUN_HOURS;
+    const requiredKwFromEnergy = adjustedKwhPerDay / rates.peakSunHours;
     const requiredKwFromPeak = peakLoadW / 1000;
     const requiredKw = Math.max(requiredKwFromEnergy, requiredKwFromPeak);
     const systemSizeKw =
@@ -102,8 +183,8 @@ const SolarConsultant = ({ onBack }: { onBack: () => void }) => {
     const hardwareCost = systemSizeKw * rates.panelInverterPerKw + batteryKwh * rates.batteryPerKwh;
     const estimatedCost = hardwareCost * (1 + rates.installMarkupPct / 100);
 
-    const monthlyGenCost = adjustedKwhPerDay * rates.genFuelLPerKwh * rates.petrolPerLitre * 30;
-    const monthlyPhcnCost = adjustedKwhPerDay * rates.phcnPerKwh * 30;
+    const monthlyGenCost = adjustedKwhPerDay * rates.genFuelLPerKwh * rates.fuelPerLitre * 30;
+    const monthlyGridCost = adjustedKwhPerDay * rates.gridTariffPerKwh * 30;
     const monthlySavings = monthlyGenCost;
 
     const roiMonths = monthlySavings > 0 ? estimatedCost / monthlySavings : 0;
@@ -117,7 +198,7 @@ const SolarConsultant = ({ onBack }: { onBack: () => void }) => {
       batteryKwh,
       estimatedCost,
       monthlyGenCost,
-      monthlyPhcnCost,
+      monthlyGridCost,
       monthlySavings,
       roiMonths,
     };
@@ -160,16 +241,32 @@ const SolarConsultant = ({ onBack }: { onBack: () => void }) => {
           <ArrowLeft className="w-4 h-4" /> Back
         </Button>
         <div className="text-right">
-          <div className="text-primary font-bold text-sm">NIGERIA SOLAR CONSULTANT</div>
+          <div className="text-primary font-bold text-sm">SOLAR CONSULTANT</div>
         </div>
       </div>
 
       <header className="space-y-2">
         <h1 className="text-3xl font-bold">Solar Sizing &amp; Cost Estimator</h1>
         <p className="text-muted-foreground text-sm">
-          List your appliances below — get the right system size, battery, cost in Naira, and payback time.
+          List your appliances below — get the right system size, battery, cost, and payback time.
         </p>
       </header>
+
+      <GlassCard className="p-4 border-white/10">
+        <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1 mb-2">
+          <Globe className="w-3.5 h-3.5" /> Market
+        </Label>
+        <Select value={rates.countryId} onValueChange={selectCountry}>
+          <SelectTrigger className="bg-white/5 border-white/10 h-11">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {countryPresets.map((c) => (
+              <SelectItem key={c.countryId} value={c.countryId}>{c.countryLabel}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </GlassCard>
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -212,18 +309,18 @@ const SolarConsultant = ({ onBack }: { onBack: () => void }) => {
       <GlassCard className="p-4 border-white/10">
         <button className="flex items-center justify-between w-full" onClick={() => setShowRates((s) => !s)}>
           <span className="flex items-center gap-2 font-bold text-sm">
-            <Settings2 className="w-4 h-4 text-muted-foreground" /> Nigeria Market Rate Assumptions
+            <Settings2 className="w-4 h-4 text-muted-foreground" /> Market Rate Assumptions
           </span>
           {showRates ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
         {showRates && (
           <div className="grid grid-cols-2 gap-3 mt-4">
             <div className="space-y-1">
-              <Label className="text-[10px] uppercase">Panel+Inverter (₦/kW)</Label>
+              <Label className="text-[10px] uppercase">Panel+Inverter ({rates.currencySymbol}/kW)</Label>
               <Input type="number" value={rates.panelInverterPerKw} onChange={(e) => setRates((r) => ({ ...r, panelInverterPerKw: Number(e.target.value) || 0 }))} className="h-9 bg-white/5 border-white/10 text-xs" />
             </div>
             <div className="space-y-1">
-              <Label className="text-[10px] uppercase">Lithium Battery (₦/kWh)</Label>
+              <Label className="text-[10px] uppercase">Battery ({rates.currencySymbol}/kWh)</Label>
               <Input type="number" value={rates.batteryPerKwh} onChange={(e) => setRates((r) => ({ ...r, batteryPerKwh: Number(e.target.value) || 0 }))} className="h-9 bg-white/5 border-white/10 text-xs" />
             </div>
             <div className="space-y-1">
@@ -231,20 +328,24 @@ const SolarConsultant = ({ onBack }: { onBack: () => void }) => {
               <Input type="number" value={rates.installMarkupPct} onChange={(e) => setRates((r) => ({ ...r, installMarkupPct: Number(e.target.value) || 0 }))} className="h-9 bg-white/5 border-white/10 text-xs" />
             </div>
             <div className="space-y-1">
-              <Label className="text-[10px] uppercase">Petrol (₦/litre)</Label>
-              <Input type="number" value={rates.petrolPerLitre} onChange={(e) => setRates((r) => ({ ...r, petrolPerLitre: Number(e.target.value) || 0 }))} className="h-9 bg-white/5 border-white/10 text-xs" />
+              <Label className="text-[10px] uppercase">Fuel ({rates.currencySymbol}/litre)</Label>
+              <Input type="number" value={rates.fuelPerLitre} onChange={(e) => setRates((r) => ({ ...r, fuelPerLitre: Number(e.target.value) || 0 }))} className="h-9 bg-white/5 border-white/10 text-xs" />
             </div>
             <div className="space-y-1">
               <Label className="text-[10px] uppercase">Genset (L/kWh)</Label>
               <Input type="number" step="0.1" value={rates.genFuelLPerKwh} onChange={(e) => setRates((r) => ({ ...r, genFuelLPerKwh: Number(e.target.value) || 0 }))} className="h-9 bg-white/5 border-white/10 text-xs" />
             </div>
             <div className="space-y-1">
-              <Label className="text-[10px] uppercase">PHCN (₦/kWh)</Label>
-              <Input type="number" value={rates.phcnPerKwh} onChange={(e) => setRates((r) => ({ ...r, phcnPerKwh: Number(e.target.value) || 0 }))} className="h-9 bg-white/5 border-white/10 text-xs" />
+              <Label className="text-[10px] uppercase">{rates.gridLabel} ({rates.currencySymbol}/kWh)</Label>
+              <Input type="number" value={rates.gridTariffPerKwh} onChange={(e) => setRates((r) => ({ ...r, gridTariffPerKwh: Number(e.target.value) || 0 }))} className="h-9 bg-white/5 border-white/10 text-xs" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase">Peak Sun Hours/Day</Label>
+              <Input type="number" step="0.1" value={rates.peakSunHours} onChange={(e) => setRates((r) => ({ ...r, peakSunHours: Number(e.target.value) || 0 }))} className="h-9 bg-white/5 border-white/10 text-xs" />
             </div>
             <p className="col-span-2 text-[10px] text-muted-foreground leading-relaxed">
-              Starting assumptions from Nigerian solar market reporting, mid-2026. Prices move with the naira
-              exchange rate — confirm with local vendors before quoting a client.
+              Starting assumptions from local solar-market reporting, mid-2026. Prices move with FX rates and
+              local conditions — confirm with local vendors before quoting a client.
             </p>
           </div>
         )}
@@ -264,7 +365,7 @@ const SolarConsultant = ({ onBack }: { onBack: () => void }) => {
           {results.systemSizeKw}KW Solar + {results.batteryKwh}KWH Battery
         </div>
         <div className="text-xs text-muted-foreground">
-          Peak load: {(results.peakLoadW / 1000).toFixed(2)} kW · Sized for {PEAK_SUN_HOURS} peak sun hours/day
+          Peak load: {(results.peakLoadW / 1000).toFixed(2)} kW · Sized for {rates.peakSunHours} peak sun hours/day
         </div>
       </GlassCard>
 
@@ -274,7 +375,7 @@ const SolarConsultant = ({ onBack }: { onBack: () => void }) => {
             <Banknote className="w-4 h-4 text-emerald-500" />
             <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Estimated Cost</span>
           </div>
-          <div className="text-xl font-black">{naira(results.estimatedCost)}</div>
+          <div className="text-xl font-black">{formatMoney(results.estimatedCost, rates.currencySymbol)}</div>
         </GlassCard>
         <GlassCard className="p-5">
           <div className="flex items-center gap-2 mb-2">
@@ -291,11 +392,11 @@ const SolarConsultant = ({ onBack }: { onBack: () => void }) => {
         </h4>
         <div className="flex items-center justify-between text-sm">
           <span className="flex items-center gap-2 text-muted-foreground"><Fuel className="w-3.5 h-3.5" /> vs Generator</span>
-          <span className="font-bold text-emerald-500">{naira(results.monthlyGenCost)}/mo</span>
+          <span className="font-bold text-emerald-500">{formatMoney(results.monthlyGenCost, rates.currencySymbol)}/mo</span>
         </div>
         <div className="flex items-center justify-between text-sm">
-          <span className="flex items-center gap-2 text-muted-foreground"><PlugZap className="w-3.5 h-3.5" /> vs PHCN Grid</span>
-          <span className="font-bold text-emerald-500">{naira(results.monthlyPhcnCost)}/mo</span>
+          <span className="flex items-center gap-2 text-muted-foreground"><PlugZap className="w-3.5 h-3.5" /> vs {rates.gridLabel}</span>
+          <span className="font-bold text-emerald-500">{formatMoney(results.monthlyGridCost, rates.currencySymbol)}/mo</span>
         </div>
       </GlassCard>
 
