@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronRight,
@@ -9,7 +9,9 @@ import {
   ImageIcon,
   Compass,
   FileText,
-  Bot
+  Bot,
+  CheckCircle2,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,12 +22,20 @@ import { GlassCard } from '@/components/GlassCard';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { createProject } from '@/lib/api';
+import { uploadProjectFile } from '@/lib/storage';
 
 const steps = [
   { id: 'client', title: 'Client Details', icon: Info },
   { id: 'address', title: 'Location', icon: MapPin },
   { id: 'technical', title: 'Technical specs', icon: Zap },
   { id: 'media', title: 'Site media', icon: ImageIcon },
+];
+
+const uploadSlots = [
+  { key: 'drone', label: 'Drone Survey', icon: Compass },
+  { key: 'cad', label: 'CAD Drawing', icon: FileText },
+  { key: 'photos', label: 'Site Images', icon: ImageIcon },
+  { key: 'bill', label: 'Utility Bill', icon: Zap },
 ];
 
 interface ProjectWizardProps {
@@ -65,6 +75,10 @@ const ProjectWizard = ({ onComplete, onCancel }: ProjectWizardProps) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState<FormState>(initialForm);
+  const [uploadingSlot, setUploadingSlot] = useState<string | null>(null);
+  const [uploadedFiles, setUploadedFiles] = useState<Record<string, string>>({});
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const activeSlotRef = useRef<string | null>(null);
 
   const update = (field: keyof FormState, value: string) =>
     setForm((f) => ({ ...f, [field]: value }));
@@ -89,6 +103,29 @@ const ProjectWizard = ({ onComplete, onCancel }: ProjectWizardProps) => {
     }
   };
 
+  const triggerUpload = (slotKey: string) => {
+    activeSlotRef.current = slotKey;
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const slotKey = activeSlotRef.current;
+    e.target.value = '';
+    if (!file || !slotKey) return;
+
+    setUploadingSlot(slotKey);
+    try {
+      const url = await uploadProjectFile(file);
+      setUploadedFiles((prev) => ({ ...prev, [slotKey]: url }));
+      toast.success(`${file.name} uploaded`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploadingSlot(null);
+    }
+  };
+
   const submit = async () => {
     setIsSubmitting(true);
     try {
@@ -104,6 +141,7 @@ const ProjectWizard = ({ onComplete, onCancel }: ProjectWizardProps) => {
         grid_type: form.gridType,
         backup_hours: form.backupHours ? Number(form.backupHours) : undefined,
         notes: form.notes || undefined,
+        photo_urls: Object.values(uploadedFiles),
       });
       toast.success('Project Created Successfully');
       onComplete();
@@ -258,25 +296,48 @@ const ProjectWizard = ({ onComplete, onCancel }: ProjectWizardProps) => {
       case 3:
         return (
           <div className="space-y-6">
+             <input
+               ref={fileInputRef}
+               type="file"
+               className="hidden"
+               onChange={handleFileChange}
+               accept="image/*,.pdf,.dwg,.dxf"
+             />
              <div className="grid grid-cols-2 gap-4">
-               {[
-                 { label: 'Drone Survey', icon: Compass },
-                 { label: 'CAD Drawing', icon: FileText },
-                 { label: 'Site Images', icon: ImageIcon },
-                 { label: 'Utility Bill', icon: Zap },
-               ].map((item, i) => (
-                 <button
-                   key={i}
-                   type="button"
-                   onClick={() => toast.info('File upload requires storage setup — see README for adding Supabase Storage.')}
-                   className="h-32 rounded-2xl border border-dashed border-white/20 hover:border-primary/50 hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-2 group"
-                 >
-                   <div className="p-3 rounded-full bg-white/5 group-hover:bg-primary/20 transition-colors">
-                     <item.icon className="w-6 h-6 text-muted-foreground group-hover:text-primary" />
-                   </div>
-                   <span className="text-xs font-medium text-muted-foreground group-hover:text-white">{item.label}</span>
-                 </button>
-               ))}
+               {uploadSlots.map((slot) => {
+                 const isUploading = uploadingSlot === slot.key;
+                 const isDone = Boolean(uploadedFiles[slot.key]);
+                 return (
+                   <button
+                     key={slot.key}
+                     type="button"
+                     onClick={() => triggerUpload(slot.key)}
+                     disabled={isUploading}
+                     className={cn(
+                       "h-32 rounded-2xl border border-dashed transition-all flex flex-col items-center justify-center gap-2 group",
+                       isDone
+                         ? "border-emerald-500/50 bg-emerald-500/5"
+                         : "border-white/20 hover:border-primary/50 hover:bg-primary/5"
+                     )}
+                   >
+                     <div className={cn(
+                       "p-3 rounded-full transition-colors",
+                       isDone ? "bg-emerald-500/20" : "bg-white/5 group-hover:bg-primary/20"
+                     )}>
+                       {isUploading ? (
+                         <Loader2 className="w-6 h-6 text-primary animate-spin" />
+                       ) : isDone ? (
+                         <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+                       ) : (
+                         <slot.icon className="w-6 h-6 text-muted-foreground group-hover:text-primary" />
+                       )}
+                     </div>
+                     <span className="text-xs font-medium text-muted-foreground group-hover:text-white">
+                       {isUploading ? 'Uploading...' : isDone ? 'Uploaded' : slot.label}
+                     </span>
+                   </button>
+                 );
+               })}
              </div>
 
              <GlassCard className="p-6 border-primary/20 bg-primary/5 flex items-center gap-4">
@@ -284,8 +345,8 @@ const ProjectWizard = ({ onComplete, onCancel }: ProjectWizardProps) => {
                   <Bot className="w-7 h-7 text-black" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-sm">AI Scan Ready</h4>
-                  <p className="text-[10px] text-muted-foreground">Upload drone mapping for automatic 3D modeling and shading analysis.</p>
+                  <h4 className="font-bold text-sm">Files saved to your account</h4>
+                  <p className="text-[10px] text-muted-foreground">Uploaded files are stored securely and attached to this project.</p>
                 </div>
              </GlassCard>
           </div>
